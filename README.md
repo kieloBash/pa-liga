@@ -38,6 +38,9 @@ npx prisma db push
 
 # Start the dev server
 npm run dev
+
+# for creating feature
+npm run create-feature -- --name <name>
 ```
 
 ---
