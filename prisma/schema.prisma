@@ -7,8 +7,147 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+}
+
+enum LeagueStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum GameStatus {
+  SCHEDULED
+  LIVE
+  FINALIZED
+}
+
+enum PlayerPosition {
+  PG
+  SG
+  SF
+  PF
+  C
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String // bcrypt hashed
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── League ──────────────────────────────────────────────────────────────────
+
+model League {
+  id        String       @id @default(cuid())
+  name      String
+  season    String
+  status    LeagueStatus @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  teams Team[]
+  games Game[]
+}
+
+// ─── Team ────────────────────────────────────────────────────────────────────
+
+model Team {
+  id        String   @id @default(cuid())
+  leagueId  String
+  name      String
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  players   Player[]
+  homeGames Game[]   @relation("HomeTeam")
+  awayGames Game[]   @relation("AwayTeam")
+}
+
+// ─── Player ──────────────────────────────────────────────────────────────────
+
+model Player {
+  id           String          @id @default(cuid())
+  teamId       String
+  name         String
+  jerseyNumber Int
+  position     PlayerPosition?
+  avatarUrl    String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  team             Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  gameStats        PlayerGameStat[]
+  playerOfTheGames PlayerOfTheGame[]
+}
+
+// ─── Game ────────────────────────────────────────────────────────────────────
+
+model Game {
+  id          String     @id @default(cuid())
+  leagueId    String
+  homeTeamId  String
+  awayTeamId  String
+  venue       String?
+  scheduledAt DateTime
+  status      GameStatus @default(SCHEDULED)
+  homeScore   Int        @default(0)
+  awayScore   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  league          League           @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  homeTeam        Team             @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam        Team             @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  playerGameStats PlayerGameStat[]
+  playerOfTheGame PlayerOfTheGame?
+}
+
+// ─── PlayerGameStat ──────────────────────────────────────────────────────────
+
+model PlayerGameStat {
+  id                String   @id @default(cuid())
+  gameId            String
+  playerId          String
+  points            Int      @default(0)
+  rebounds          Int      @default(0)
+  assists           Int      @default(0)
+  steals            Int      @default(0)
+  blocks            Int      @default(0)
+  turnovers         Int      @default(0)
+  fouls             Int      @default(0)
+  editedByOrganizer Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, playerId])
+}
+
+// ─── PlayerOfTheGame ─────────────────────────────────────────────────────────
+
+model PlayerOfTheGame {
+  id       String  @id @default(cuid())
+  gameId   String  @unique
+  playerId String
+  note     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
 }
